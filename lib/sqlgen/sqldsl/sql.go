@@ -355,19 +355,75 @@ func TypedUsersetValuesTable(rows []ValuesRow, alias string) TypedValuesTable {
 }
 
 // =============================================================================
-// Transitional Factory Functions
+// Config Table References
 // =============================================================================
-// These helpers support gradual migration from string-based VALUES to typed rows.
-// They prefer typed rows when available, falling back to string-based values.
+// Functions reference persistent config tables instead of inline VALUES.
+// The tables are populated during migration with closure/userset metadata.
 
-// ClosureTable returns a typed closure VALUES table.
-func ClosureTable(rows []ValuesRow, alias string) TableExpr {
-	return TypedClosureValuesTable(rows, alias)
+// ClosureTable returns a reference to the melange_closure config table.
+// The rows parameter is ignored — data lives in the table, not inline.
+func ClosureTable(_ []ValuesRow, alias string) TableExpr {
+	return TableAs("melange_closure", alias)
 }
 
-// UsersetTable returns a typed userset VALUES table.
-func UsersetTable(rows []ValuesRow, alias string) TableExpr {
-	return TypedUsersetValuesTable(rows, alias)
+// UsersetTable returns a reference to the melange_userset config table.
+// The rows parameter is ignored — data lives in the table, not inline.
+func UsersetTable(_ []ValuesRow, alias string) TableExpr {
+	return TableAs("melange_userset", alias)
+}
+
+// ConfigTableDDL returns the DDL for creating the melange config tables.
+func ConfigTableDDL() string {
+	return Sqlf(`
+		CREATE TABLE IF NOT EXISTS melange_closure (
+		    object_type TEXT NOT NULL,
+		    relation TEXT NOT NULL,
+		    satisfying_relation TEXT NOT NULL,
+		    PRIMARY KEY (object_type, relation, satisfying_relation)
+		);
+		CREATE TABLE IF NOT EXISTS melange_userset (
+		    object_type TEXT NOT NULL,
+		    relation TEXT NOT NULL,
+		    subject_type TEXT NOT NULL,
+		    subject_relation TEXT NOT NULL,
+		    PRIMARY KEY (object_type, relation, subject_type, subject_relation)
+		);
+	`)
+}
+
+// ConfigTableInserts generates TRUNCATE + INSERT statements to populate config tables.
+func ConfigTableInserts(closureRows, usersetRows []ValuesRow) string {
+	var b strings.Builder
+
+	b.WriteString("TRUNCATE melange_closure;\n")
+	if len(closureRows) > 0 {
+		b.WriteString("INSERT INTO melange_closure (object_type, relation, satisfying_relation) VALUES\n")
+		for i, row := range closureRows {
+			b.WriteString("    ")
+			b.WriteString(row.SQL())
+			if i < len(closureRows)-1 {
+				b.WriteString(",\n")
+			} else {
+				b.WriteString(";\n")
+			}
+		}
+	}
+
+	b.WriteString("TRUNCATE melange_userset;\n")
+	if len(usersetRows) > 0 {
+		b.WriteString("INSERT INTO melange_userset (object_type, relation, subject_type, subject_relation) VALUES\n")
+		for i, row := range usersetRows {
+			b.WriteString("    ")
+			b.WriteString(row.SQL())
+			if i < len(usersetRows)-1 {
+				b.WriteString(",\n")
+			} else {
+				b.WriteString(";\n")
+			}
+		}
+	}
+
+	return b.String()
 }
 
 // =============================================================================

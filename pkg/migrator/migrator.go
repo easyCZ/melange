@@ -42,7 +42,7 @@ var (
 //   - SQL templates in tooling/schema/templates/ change
 //   - Codegen logic in schema/codegen.go or schema/codegen_list.go changes
 //   - New function patterns are added
-const CodegenVersion = "1"
+const CodegenVersion = "2"
 
 // MigrateOptions controls migration behavior (public API).
 type MigrateOptions struct {
@@ -136,6 +136,20 @@ func (m *Migrator) ApplyDDL(ctx context.Context) error {
 
 // applyGeneratedSQL applies generated specialized functions and dispatcher.
 func (m *Migrator) applyGeneratedSQL(ctx context.Context, db Execer, gen GeneratedSQL) error {
+	// Apply config table DDL (creates melange_closure and melange_userset if needed)
+	if gen.ConfigDDL != "" {
+		if _, err := db.ExecContext(ctx, gen.ConfigDDL); err != nil {
+			return fmt.Errorf("applying config table DDL: %w", err)
+		}
+	}
+
+	// Populate config tables with closure and userset data
+	if gen.ConfigInserts != "" {
+		if _, err := db.ExecContext(ctx, gen.ConfigInserts); err != nil {
+			return fmt.Errorf("applying config table inserts: %w", err)
+		}
+	}
+
 	// Apply specialized check functions first (dispatcher depends on them)
 	for i, fn := range gen.Functions {
 		if _, err := db.ExecContext(ctx, fn); err != nil {
@@ -584,6 +598,18 @@ func (m *Migrator) outputDryRun(w io.Writer, melangeVersion, schemaChecksum stri
 	_, _ = fmt.Fprintf(w, "-- DDL: Migration Tracking Table\n")
 	_, _ = fmt.Fprintf(w, "-- ============================================================\n\n")
 	_, _ = fmt.Fprintf(w, "%s\n\n", migrationsDDL)
+
+	// Config tables
+	_, _ = fmt.Fprintf(w, "-- ============================================================\n")
+	_, _ = fmt.Fprintf(w, "-- melange: config-tables\n")
+	_, _ = fmt.Fprintf(w, "-- Config Tables (closure + userset metadata)\n")
+	_, _ = fmt.Fprintf(w, "-- ============================================================\n\n")
+	if generatedSQL.ConfigDDL != "" {
+		_, _ = fmt.Fprintf(w, "%s\n\n", generatedSQL.ConfigDDL)
+	}
+	if generatedSQL.ConfigInserts != "" {
+		_, _ = fmt.Fprintf(w, "%s\n\n", generatedSQL.ConfigInserts)
+	}
 
 	// Check functions
 	_, _ = fmt.Fprintf(w, "-- ============================================================\n")

@@ -291,7 +291,7 @@ func buildUsersetFilterRelationMatchExpr(closureRows []ValuesRow, subjectIDExpr 
 	relationExtract := "substring(" + subjectIDExpr + " from position('#' in " + subjectIDExpr + ") + 1)"
 	closureExistsStmt := SelectStmt{
 		Columns:  []string{"1"},
-		FromExpr: TypedClosureValuesTable(closureRows, "subj_c"),
+		FromExpr: ClosureTable(closureRows, "subj_c"),
 		Where: And(
 			Eq{Left: Col{Table: "subj_c", Column: "object_type"}, Right: Param("v_filter_type")},
 			Eq{Left: Col{Table: "subj_c", Column: "relation"}, Right: Raw(relationExtract)},
