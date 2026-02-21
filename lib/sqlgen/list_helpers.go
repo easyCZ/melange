@@ -110,6 +110,7 @@ func buildExclusionInput(a RelationAnalysis, objectIDExpr, subjectTypeExpr, subj
 		ComplexExcludedRelations: a.ComplexExcludedRelations,
 		ExcludedParentRelations:  convertParentRelations(a.ExcludedParentRelations),
 		ExcludedIntersection:     convertIntersectionGroups(a.ExcludedIntersectionGroups),
+		NoWildcard:               Bool(false),
 	}
 }
 
@@ -168,6 +169,7 @@ func buildSimpleComplexExclusionInput(a RelationAnalysis, objectIDExpr, subjectT
 		SubjectIDExpr:            subjectIDExpr,
 		SimpleExcludedRelations:  a.SimpleExcludedRelations,
 		ComplexExcludedRelations: a.ComplexExcludedRelations,
+		NoWildcard:               Bool(false),
 	}
 }
 

@@ -231,12 +231,13 @@ func buildSelfRefUsersetRegularComplexClosureBlocks(plan ListPlan, exclusions Ex
 			WhereSubjectType(SubjectType).
 			Where(
 				In{Expr: SubjectType, Values: plan.AllowedSubjectTypes},
-				CheckPermissionInternalExpr(
-					SubjectRef{Type: SubjectType, ID: Col{Table: "t", Column: "subject_id"}},
-					rel,
-					ObjectRef{Type: Lit(plan.ObjectType), ID: ObjectID},
-					true,
-				),
+				CheckPermission{
+					Subject:     SubjectRef{Type: SubjectType, ID: Col{Table: "t", Column: "subject_id"}},
+					Relation:    rel,
+					Object:      ObjectRef{Type: Lit(plan.ObjectType), ID: ObjectID},
+					ExpectAllow: true,
+					NoWildcard:  Bool(false),
+				},
 			).
 			SelectCol("subject_id").
 			Distinct()

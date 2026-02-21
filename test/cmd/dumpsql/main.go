@@ -179,6 +179,15 @@ func dumpSQL(tc TestCase, opts dumpOptions) {
 			continue
 		}
 
+		// Show helper data functions
+		if len(generatedSQL.HelperFunctions) > 0 {
+			fmt.Println("\n## HELPER DATA FUNCTIONS")
+			for _, fn := range generatedSQL.HelperFunctions {
+				fmt.Println()
+				fmt.Println(fn)
+			}
+		}
+
 		// Show generated functions
 		if len(generatedSQL.Functions) > 0 {
 			fmt.Println("\n## GENERATED FUNCTIONS")
@@ -194,33 +203,11 @@ func dumpSQL(tc TestCase, opts dumpOptions) {
 			fmt.Println("(none - no generatable relations)")
 		}
 
-		// Show generated no-wildcard functions
-		if len(generatedSQL.NoWildcardFunctions) > 0 {
-			fmt.Println("\n## GENERATED FUNCTIONS NO-WILDCARD")
-			for j, fn := range generatedSQL.NoWildcardFunctions {
-				if j > 0 {
-					fmt.Println("\n-- " + strings.Repeat("-", 60))
-				}
-				fmt.Println()
-				fmt.Println(fn)
-			}
-		} else {
-			fmt.Println("\n## GENERATED FUNCTIONS NO-WILDCARD")
-			fmt.Println("(none - no generatable relations)")
-		}
-
 		// Show dispatcher
 		if generatedSQL.Dispatcher != "" {
 			fmt.Println("\n## DISPATCHER (check_permission)")
 			fmt.Println()
 			fmt.Println(generatedSQL.Dispatcher)
-		}
-
-		// Show no-wildcard dispatcher
-		if generatedSQL.DispatcherNoWildcard != "" {
-			fmt.Println("\n## DISPATCHER NO-WILDCARD (check_permission_no_wildcard)")
-			fmt.Println()
-			fmt.Println(generatedSQL.DispatcherNoWildcard)
 		}
 
 		// Show bulk dispatcher

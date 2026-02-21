@@ -59,16 +59,17 @@ func InternalPermissionCheckCall(relation, objectType string, objectID, visited 
 	}
 }
 
-// NoWildcardPermissionCheckCall creates a check_permission_no_wildcard function call.
+// NoWildcardPermissionCheckCall creates a check_permission call with p_no_wildcard = TRUE.
 func NoWildcardPermissionCheckCall(relation, objectType string, subjectID, objectID Expr) FuncCallEq {
 	return FuncCallEq{
-		FuncName: "check_permission_no_wildcard",
+		FuncName: "check_permission",
 		Args: []Expr{
 			SubjectType,
 			subjectID,
 			Lit(relation),
 			Lit(objectType),
 			objectID,
+			Bool(true), // p_no_wildcard
 		},
 		Value: Int(1),
 	}
@@ -76,28 +77,30 @@ func NoWildcardPermissionCheckCall(relation, objectType string, subjectID, objec
 
 // SpecializedCheckCall creates a call to a specialized check function.
 // Used for implied relations and parent relation checks.
+// Passes p_no_wildcard through to propagate wildcard behavior.
 //
 // Example:
 //
 //	SpecializedCheckCall("check_doc_owner", SubjectType, SubjectID, ObjectID, Visited)
 //
-// Renders: check_doc_owner(p_subject_type, p_subject_id, p_object_id, p_visited) = 1
+// Renders: check_doc_owner(p_subject_type, p_subject_id, p_object_id, p_visited, p_no_wildcard) = 1
 func SpecializedCheckCall(funcName string, subjectType, subjectID, objectID, visited Expr) FuncCallEq {
 	return FuncCallEq{
 		FuncName: funcName,
-		Args:     []Expr{subjectType, subjectID, objectID, visited},
+		Args:     []Expr{subjectType, subjectID, objectID, visited, Param("p_no_wildcard")},
 		Value:    Int(1),
 	}
 }
 
 // InternalCheckCall creates a check_permission_internal call with explicit subject/object types.
 // Used in parent relation (TTU) checks where the linking tuple provides the parent object.
+// Passes p_no_wildcard through to propagate wildcard behavior.
 //
 // Example:
 //
 //	InternalCheckCall(SubjectType, SubjectID, "viewer", Col{Table: "link", Column: "subject_type"}, Col{Table: "link", Column: "subject_id"}, visited)
 //
-// Renders: check_permission_internal(p_subject_type, p_subject_id, 'viewer', link.subject_type, link.subject_id, <visited>) = 1
+// Renders: check_permission_internal(p_subject_type, p_subject_id, 'viewer', link.subject_type, link.subject_id, <visited>, p_no_wildcard) = 1
 func InternalCheckCall(subjectType, subjectID Expr, relation string, parentType, parentID, visited Expr) FuncCallEq {
 	return FuncCallEq{
 		FuncName: "check_permission_internal",
@@ -108,6 +111,7 @@ func InternalCheckCall(subjectType, subjectID Expr, relation string, parentType,
 			parentType,
 			parentID,
 			visited,
+			Param("p_no_wildcard"),
 		},
 		Value: Int(1),
 	}

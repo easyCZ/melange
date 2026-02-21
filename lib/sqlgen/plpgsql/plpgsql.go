@@ -278,11 +278,12 @@ func ListSubjectsDispatcherArgs() []FuncArg {
 // SqlFunction represents a simple SQL function (LANGUAGE sql).
 // Unlike PlpgsqlFunction, this renders a single SELECT expression as the body.
 type SqlFunction struct {
-	Name    string
-	Args    []FuncArg
-	Returns string
-	Body    sqldsl.SQLer // The body expression (e.g., a SelectStmt or function call)
-	Header  []string     // Comment lines at the top of the function (without -- prefix)
+	Name       string
+	Args       []FuncArg
+	Returns    string
+	Body       sqldsl.SQLer // The body expression (e.g., a SelectStmt or function call)
+	Header     []string     // Comment lines at the top of the function (without -- prefix)
+	Volatility string       // "STABLE" (default), "IMMUTABLE", or "VOLATILE"
 }
 
 // SQL renders the complete CREATE OR REPLACE FUNCTION statement as LANGUAGE sql.
@@ -295,7 +296,14 @@ func (f SqlFunction) SQL() string {
 	sb.WriteString("    ")
 	sb.WriteString(f.Body.SQL())
 	sb.WriteString(";\n")
-	sb.WriteString("$$ LANGUAGE sql STABLE;")
+
+	volatility := f.Volatility
+	if volatility == "" {
+		volatility = "STABLE"
+	}
+	sb.WriteString("$$ LANGUAGE sql ")
+	sb.WriteString(volatility)
+	sb.WriteString(";")
 
 	return sb.String()
 }

@@ -142,6 +142,7 @@ func checkFunctionArgs() []FuncArg {
 		{Name: "p_subject_id", Type: "TEXT"},
 		{Name: "p_object_id", Type: "TEXT"},
 		{Name: "p_visited", Type: "TEXT []", Default: EmptyArray{}},
+		{Name: "p_no_wildcard", Type: "BOOLEAN", Default: Bool(false)},
 	}
 }
 

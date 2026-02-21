@@ -225,7 +225,7 @@ func TestCheckPermissionInternal(t *testing.T) {
 	}
 
 	sql := check.SQL()
-	expect := "check_permission_internal(p_subject_type, p_subject_id, 'viewer', 'document', t.object_id, ARRAY[]::TEXT[]) = 1"
+	expect := "check_permission_internal(p_subject_type, p_subject_id, 'viewer', 'document', t.object_id, ARRAY[]::TEXT[], p_no_wildcard) = 1"
 	if sql != expect {
 		t.Errorf("SQL = %q\nwant: %q", sql, expect)
 	}

@@ -354,19 +354,72 @@ func TypedUsersetValuesTable(rows []ValuesRow, alias string) TypedValuesTable {
 	}
 }
 
+// FunctionTableRef represents a function call used as a table source in FROM/JOIN clauses.
+// The function must return a TABLE type. Column names come from the function's RETURNS TABLE.
+//
+// Example:
+//
+//	FunctionTableRef{FuncName: "melange_closure_data", Alias: "c"}
+//
+// Renders: melange_closure_data() AS c
+type FunctionTableRef struct {
+	FuncName string
+	Alias    string
+}
+
+// SQL renders the function call as a table expression.
+func (f FunctionTableRef) SQL() string {
+	if f.Alias != "" {
+		return f.FuncName + "() AS " + f.Alias
+	}
+	return f.FuncName + "()"
+}
+
+// TableSQL implements TableExpr.
+func (f FunctionTableRef) TableSQL() string {
+	return f.SQL()
+}
+
+// TableAlias implements TableExpr.
+func (f FunctionTableRef) TableAlias() string {
+	return f.Alias
+}
+
+// ClosureDataFuncName is the name of the generated helper function for closure data.
+const ClosureDataFuncName = "melange_closure_data"
+
+// UsersetDataFuncName is the name of the generated helper function for userset data.
+const UsersetDataFuncName = "melange_userset_data"
+
 // =============================================================================
 // Transitional Factory Functions
 // =============================================================================
 // These helpers support gradual migration from string-based VALUES to typed rows.
 // They prefer typed rows when available, falling back to string-based values.
 
-// ClosureTable returns a typed closure VALUES table.
+// ClosureTable returns a reference to the melange_closure_data() helper function.
+// The helper function is generated once and contains the closure VALUES data,
+// eliminating repeated inline VALUES clauses across all generated functions.
 func ClosureTable(rows []ValuesRow, alias string) TableExpr {
+	return FunctionTableRef{FuncName: ClosureDataFuncName, Alias: alias}
+}
+
+// UsersetTable returns a reference to the melange_userset_data() helper function.
+// The helper function is generated once and contains the userset VALUES data,
+// eliminating repeated inline VALUES clauses across all generated functions.
+func UsersetTable(rows []ValuesRow, alias string) TableExpr {
+	return FunctionTableRef{FuncName: UsersetDataFuncName, Alias: alias}
+}
+
+// InlineClosureTable returns an inline VALUES table for closure data.
+// Used only for generating the helper function body itself.
+func InlineClosureTable(rows []ValuesRow, alias string) TableExpr {
 	return TypedClosureValuesTable(rows, alias)
 }
 
-// UsersetTable returns a typed userset VALUES table.
-func UsersetTable(rows []ValuesRow, alias string) TableExpr {
+// InlineUsersetTable returns an inline VALUES table for userset data.
+// Used only for generating the helper function body itself.
+func InlineUsersetTable(rows []ValuesRow, alias string) TableExpr {
 	return TypedUsersetValuesTable(rows, alias)
 }
 

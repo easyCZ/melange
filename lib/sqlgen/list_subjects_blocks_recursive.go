@@ -100,6 +100,7 @@ func buildListSubjectsRecursiveComplexClosureBlocks(plan ListPlan) []TypedQueryB
 					Relation:    rel,
 					Object:      LiteralObject(plan.ObjectType, ObjectID),
 					ExpectAllow: true,
+					NoWildcard:  Bool(false),
 				},
 			).
 			SelectCol("subject_id").
@@ -142,12 +143,13 @@ func buildListSubjectsRecursiveComplexUsersetBlock(plan ListPlan, pattern listUs
 
 	memberExclusions := buildExclusionInput(plan.Analysis, ObjectID, Col{Table: memberAlias, Column: "subject_type"}, Col{Table: memberAlias, Column: "subject_id"})
 
-	checkExpr := CheckPermissionInternalExpr(
-		SubjectRef{Type: SubjectType, ID: Col{Table: memberAlias, Column: "subject_id"}},
-		pattern.SubjectRelation,
-		ObjectRef{Type: Lit(pattern.SubjectType), ID: UsersetObjectID{Source: Col{Table: grantAlias, Column: "subject_id"}}},
-		true,
-	)
+	checkExpr := CheckPermission{
+		Subject:     SubjectRef{Type: SubjectType, ID: Col{Table: memberAlias, Column: "subject_id"}},
+		Relation:    pattern.SubjectRelation,
+		Object:      ObjectRef{Type: Lit(pattern.SubjectType), ID: UsersetObjectID{Source: Col{Table: grantAlias, Column: "subject_id"}}},
+		ExpectAllow: true,
+		NoWildcard:  Bool(false),
+	}
 
 	joinCond := And(
 		Eq{Left: Col{Table: memberAlias, Column: "object_type"}, Right: Lit(pattern.SubjectType)},
@@ -178,6 +180,7 @@ func buildListSubjectsRecursiveComplexUsersetBlock(plan ListPlan, pattern listUs
 			Relation:    pattern.SourceRelation,
 			Object:      LiteralObject(plan.ObjectType, ObjectID),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		})
 	}
 
@@ -235,6 +238,7 @@ func buildListSubjectsRecursiveSimpleUsersetBlock(plan ListPlan, pattern listUse
 			Relation:    pattern.SourceRelation,
 			Object:      LiteralObject(plan.ObjectType, ObjectID),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		})
 	}
 
@@ -461,6 +465,7 @@ func buildListSubjectsRecursiveUsersetFilterDirectBlock(plan ListPlan) TypedQuer
 		Relation:    plan.Relation,
 		Object:      LiteralObject(plan.ObjectType, Param("p_object_id")),
 		ExpectAllow: true,
+		NoWildcard:  Bool(false),
 	}
 
 	closureStmt := SelectStmt{

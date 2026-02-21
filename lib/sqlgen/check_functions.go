@@ -5,8 +5,8 @@ import (
 	"sort"
 )
 
-func generateCheckFunction(a RelationAnalysis, inline InlineSQLData, noWildcard bool) (string, error) {
-	plan := BuildCheckPlan(a, inline, noWildcard)
+func generateCheckFunction(a RelationAnalysis, inline InlineSQLData) (string, error) {
+	plan := BuildCheckPlan(a, inline)
 	blocks, err := BuildCheckBlocks(plan)
 	if err != nil {
 		return "", fmt.Errorf("building check blocks for %s.%s: %w", a.ObjectType, a.Relation, err)
@@ -14,20 +14,15 @@ func generateCheckFunction(a RelationAnalysis, inline InlineSQLData, noWildcard 
 	return RenderCheckFunction(plan, blocks)
 }
 
-func generateDispatcher(analyses []RelationAnalysis, noWildcard bool) (string, error) {
-	fnName := "check_permission"
-	if noWildcard {
-		fnName = "check_permission_no_wildcard"
-	}
-
-	cases := buildDispatcherCases(analyses, noWildcard)
+func generateDispatcher(analyses []RelationAnalysis) (string, error) {
+	cases := buildDispatcherCases(analyses)
 	if len(cases) == 0 {
-		return renderEmptyDispatcher(fnName), nil
+		return renderEmptyDispatcher("check_permission"), nil
 	}
-	return renderDispatcherWithCases(fnName, cases), nil
+	return renderDispatcherWithCases("check_permission", cases), nil
 }
 
-func buildDispatcherCases(analyses []RelationAnalysis, noWildcard bool) []DispatcherCase {
+func buildDispatcherCases(analyses []RelationAnalysis) []DispatcherCase {
 	var cases []DispatcherCase
 	for _, a := range analyses {
 		if !a.Capabilities.CheckAllowed {
@@ -37,7 +32,7 @@ func buildDispatcherCases(analyses []RelationAnalysis, noWildcard bool) []Dispat
 		dc := DispatcherCase{
 			ObjectType:        a.ObjectType,
 			Relation:          a.Relation,
-			CheckFunctionName: functionNameForDispatcher(a, noWildcard),
+			CheckFunctionName: functionName(a.ObjectType, a.Relation),
 			Inlineable:        inlineable,
 		}
 		if inlineable {
@@ -74,7 +69,6 @@ func renderDispatcherWithCases(fnName string, cases []DispatcherCase) string {
 			"Generated internal dispatcher for " + fnName + "_internal",
 			"Routes to specialized functions with p_visited for cycle detection in TTU patterns",
 			"Enforces depth limit of 25 to prevent stack overflow from deep permission chains",
-			"Phase 5: All relations use specialized functions - no generic fallback",
 		},
 	}
 
@@ -82,7 +76,7 @@ func renderDispatcherWithCases(fnName string, cases []DispatcherCase) string {
 		Name:    fnName,
 		Args:    dispatcherPublicArgs(),
 		Returns: "INTEGER",
-		Body:    Raw("SELECT " + fnName + "_internal(p_subject_type, p_subject_id, p_relation, p_object_type, p_object_id, ARRAY[]::TEXT[])"),
+		Body:    Raw("SELECT " + fnName + "_internal(p_subject_type, p_subject_id, p_relation, p_object_type, p_object_id, ARRAY[]::TEXT[], p_no_wildcard)"),
 		Header: []string{
 			"Generated dispatcher for " + fnName,
 			"Routes to specialized functions for all known type/relation pairs",
@@ -114,8 +108,10 @@ func renderEmptyDispatcher(fnName string) string {
 	return internalFn.SQL() + "\n\n" + publicFn.SQL() + "\n"
 }
 
+
+
 func generateBulkDispatcher(analyses []RelationAnalysis) string {
-	cases := buildDispatcherCases(analyses, false)
+	cases := buildDispatcherCases(analyses)
 	if len(cases) == 0 {
 		return renderEmptyBulkDispatcher()
 	}
@@ -242,7 +238,7 @@ func buildBulkTypeGroupIf(g typeGroup) If {
 // For non-inlineable relations, it generates a function call.
 func buildInlineCheckExpr(c DispatcherCase, rSubjectType, rSubjectID, rObjectID Expr) Expr {
 	if !c.Inlineable {
-		return Func{Name: c.CheckFunctionName, Args: []Expr{rSubjectType, rSubjectID, rObjectID, EmptyArray{}}}
+		return Func{Name: c.CheckFunctionName, Args: []Expr{rSubjectType, rSubjectID, rObjectID, EmptyArray{}, Bool(false)}}
 	}
 	return CaseExpr{
 		Whens: []CaseWhen{
@@ -300,13 +296,6 @@ func buildBulkUnknownTypeFallback(cases []DispatcherCase) ReturnQuery {
 	return ReturnQuery{Query: query.SQL()}
 }
 
-func functionNameForDispatcher(a RelationAnalysis, noWildcard bool) string {
-	if noWildcard {
-		return functionNameNoWildcard(a.ObjectType, a.Relation)
-	}
-	return functionName(a.ObjectType, a.Relation)
-}
-
 func buildDispatcherCaseExpr(cases []DispatcherCase) CaseExpr {
 	whens := make([]CaseWhen, 0, len(cases))
 	for _, c := range cases {
@@ -316,7 +305,7 @@ func buildDispatcherCaseExpr(cases []DispatcherCase) CaseExpr {
 		}}
 		result := Func{
 			Name: c.CheckFunctionName,
-			Args: []Expr{SubjectType, SubjectID, ObjectID, Visited},
+			Args: []Expr{SubjectType, SubjectID, ObjectID, Visited, Param("p_no_wildcard")},
 		}
 		whens = append(whens, CaseWhen{Cond: cond, Result: result})
 	}
@@ -340,6 +329,7 @@ func dispatcherPublicArgs() []FuncArg {
 		{Name: "p_relation", Type: "TEXT"},
 		{Name: "p_object_type", Type: "TEXT"},
 		{Name: "p_object_id", Type: "TEXT"},
+		{Name: "p_no_wildcard", Type: "BOOLEAN", Default: Bool(false)},
 	}
 }
 
@@ -351,5 +341,6 @@ func dispatcherInternalArgs() []FuncArg {
 		{Name: "p_object_type", Type: "TEXT"},
 		{Name: "p_object_id", Type: "TEXT"},
 		{Name: "p_visited", Type: "TEXT []", Default: EmptyArray{}},
+		{Name: "p_no_wildcard", Type: "BOOLEAN", Default: Bool(false)},
 	}
 }

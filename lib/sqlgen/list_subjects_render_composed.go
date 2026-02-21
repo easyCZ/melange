@@ -21,6 +21,7 @@ func RenderListSubjectsComposedFunction(plan ListPlan, blocks ComposedSubjectsBl
 			Relation:    plan.Relation,
 			Object:      LiteralObject(plan.ObjectType, ObjectID),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		},
 	}).SQL()
 

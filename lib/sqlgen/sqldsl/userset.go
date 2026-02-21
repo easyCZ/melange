@@ -65,14 +65,32 @@ func hashPosition(expr Expr) string {
 }
 
 // SubjectIDMatch creates a condition for matching subject IDs.
-// When allowWildcard is true, matches exact ID or wildcard tuples.
-// When allowWildcard is false, matches exact ID and excludes wildcard tuples.
-func SubjectIDMatch(column, subjectID Expr, allowWildcard bool) Expr {
+// When allowWildcard is true, generates a dynamic expression that respects p_no_wildcard:
+//
+//	(subject_id = p_subject_id OR (subject_id = '*' AND NOT p_no_wildcard))
+//
+// When allowWildcard is false, matches exact ID only (no wildcard support in the model).
+func SubjectIDMatch(column, subjectID Expr, allowWildcard bool, noWildcardExpr ...Expr) Expr {
 	exactMatch := Eq{Left: column, Right: subjectID}
-	if allowWildcard {
+	if !allowWildcard {
+		return exactMatch
+	}
+
+	var flag Expr
+	if len(noWildcardExpr) > 0 && noWildcardExpr[0] != nil {
+		flag = noWildcardExpr[0]
+	} else {
+		flag = Param("p_no_wildcard")
+	}
+
+	if b, ok := flag.(Bool); ok {
+		if bool(b) {
+			return exactMatch
+		}
 		return Or(exactMatch, IsWildcard{Source: column})
 	}
-	return And(exactMatch, Not(IsWildcard{Source: column}))
+
+	return Or(exactMatch, And(IsWildcard{Source: column}, Not(flag)))
 }
 
 // UsersetNormalized replaces the relation in a userset with a new relation.

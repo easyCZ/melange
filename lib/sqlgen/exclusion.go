@@ -43,6 +43,10 @@ type ExclusionConfig struct {
 
 	// ExcludedIntersection represents intersection exclusions (e.g., "but not (A and B)").
 	ExcludedIntersection []ExcludedIntersectionGroup
+
+	// NoWildcard controls the p_no_wildcard flag for check_permission_internal calls.
+	// nil defaults to Param("p_no_wildcard") (check function context).
+	NoWildcard Expr
 }
 
 // HasExclusions returns true if any exclusion rules are configured.
@@ -84,6 +88,7 @@ func (c ExclusionConfig) checkPermission(relation string, obj ObjectRef, expectA
 		Relation:    relation,
 		Object:      obj,
 		ExpectAllow: expectAllow,
+		NoWildcard:  c.NoWildcard,
 	}
 }
 
