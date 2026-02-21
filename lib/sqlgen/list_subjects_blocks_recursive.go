@@ -507,7 +507,7 @@ func buildListSubjectsRecursiveUsersetFilterDirectBlock(plan ListPlan) TypedQuer
 func buildListSubjectsRecursiveUsersetFilterTTUBlock(plan ListPlan, parent ListParentRelationData) TypedQueryBlock {
 	closureRelStmt := SelectStmt{
 		Columns:  []string{"c.satisfying_relation"},
-		FromExpr: TypedClosureValuesTable(plan.Inline.ClosureRows, "c"),
+		FromExpr: ClosureTable(plan.Inline.ClosureRows, "c"),
 		Where: And(
 			Eq{Left: Col{Table: "c", Column: "object_type"}, Right: Col{Table: "link", Column: "subject_type"}},
 			Eq{Left: Col{Table: "c", Column: "relation"}, Right: Lit(parent.Relation)},
@@ -516,7 +516,7 @@ func buildListSubjectsRecursiveUsersetFilterTTUBlock(plan ListPlan, parent ListP
 
 	closureExistsStmt := SelectStmt{
 		Columns:  []string{"1"},
-		FromExpr: TypedClosureValuesTable(plan.Inline.ClosureRows, "subj_c"),
+		FromExpr: ClosureTable(plan.Inline.ClosureRows, "subj_c"),
 		Where: And(
 			Eq{Left: Col{Table: "subj_c", Column: "object_type"}, Right: Param("v_filter_type")},
 			Eq{Left: Col{Table: "subj_c", Column: "relation"}, Right: Raw("substring(pt.subject_id from position('#' in pt.subject_id) + 1)")},
@@ -569,7 +569,7 @@ func buildListSubjectsRecursiveUsersetFilterTTUBlock(plan ListPlan, parent ListP
 func buildListSubjectsRecursiveUsersetFilterTTUIntermediateBlock(plan ListPlan, parent ListParentRelationData) TypedQueryBlock {
 	closureExistsStmt := SelectStmt{
 		Columns:  []string{"1"},
-		FromExpr: TypedClosureValuesTable(plan.Inline.ClosureRows, "c"),
+		FromExpr: ClosureTable(plan.Inline.ClosureRows, "c"),
 		Where: And(
 			Eq{Left: Col{Table: "c", Column: "object_type"}, Right: Col{Table: "link", Column: "subject_type"}},
 			Eq{Left: Col{Table: "c", Column: "relation"}, Right: Lit(parent.Relation)},

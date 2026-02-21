@@ -39,6 +39,14 @@ func buildTupleLookupRelations(a RelationAnalysis) []string {
 // GeneratedSQL contains all SQL generated for a schema.
 // This is applied atomically during migration to ensure consistent state.
 type GeneratedSQL struct {
+	// ConfigDDL contains CREATE TABLE IF NOT EXISTS statements for
+	// melange_closure and melange_userset config tables.
+	ConfigDDL string
+
+	// ConfigInserts contains TRUNCATE + INSERT statements to populate
+	// the config tables with closure and userset metadata.
+	ConfigInserts string
+
 	// Functions contains CREATE OR REPLACE FUNCTION statements
 	// for each specialized check function (check_{type}_{relation}).
 	Functions []string
@@ -75,6 +83,10 @@ type GeneratedSQL struct {
 // as the analysis phase validates generation feasibility.
 func GenerateSQL(analyses []RelationAnalysis, inline InlineSQLData) (GeneratedSQL, error) {
 	var result GeneratedSQL
+
+	// Generate config table DDL and data
+	result.ConfigDDL = ConfigTableDDL()
+	result.ConfigInserts = ConfigTableInserts(inline.ClosureRows, inline.UsersetRows)
 
 	// Generate specialized function for each relation
 	for _, a := range analyses {

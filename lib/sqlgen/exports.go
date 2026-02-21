@@ -120,6 +120,8 @@ var (
 	TypedUsersetValuesTable         = sqldsl.TypedUsersetValuesTable
 	ClosureTable                    = sqldsl.ClosureTable
 	UsersetTable                    = sqldsl.UsersetTable
+	ConfigTableDDL                  = sqldsl.ConfigTableDDL
+	ConfigTableInserts              = sqldsl.ConfigTableInserts
 	Ident                           = sqldsl.Ident
 	RenderBlocks                    = sqldsl.RenderBlocks
 	RenderUnionBlocks               = sqldsl.RenderUnionBlocks
