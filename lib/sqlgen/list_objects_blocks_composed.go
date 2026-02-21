@@ -173,7 +173,7 @@ func buildComposedRecursiveTTUObjectsBlock(plan ListPlan, anchor *IndirectAnchor
 		Eq{Left: Col{Table: "t", Column: "object_type"}, Right: Lit(plan.ObjectType)},
 		Eq{Left: Col{Table: "t", Column: "relation"}, Right: Lit(anchor.Path[0].LinkingRelation)},
 		Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: Lit(recursiveType)},
-		CheckPermissionInternalExpr(SubjectParams(), anchor.Path[0].TargetRelation, ObjectRef{Type: Lit(recursiveType), ID: Col{Table: "t", Column: "subject_id"}}, true),
+		CheckPermission{Subject: SubjectParams(), Relation: anchor.Path[0].TargetRelation, Object: ObjectRef{Type: Lit(recursiveType), ID: Col{Table: "t", Column: "subject_id"}}, ExpectAllow: true, NoWildcard: Bool(false)},
 	)
 	conditions = append(conditions, exclusionPreds...)
 
@@ -216,7 +216,7 @@ func buildComposedUsersetObjectsBlock(plan ListPlan, firstStep AnchorPathStep, e
 		Eq{Left: UsersetRelation{Source: Col{Table: "t", Column: "subject_id"}}, Right: Lit(firstStep.SubjectRelation)},
 		Or(
 			inSubquery,
-			CheckPermissionInternalExpr(SubjectParams(), firstStep.SubjectRelation, ObjectRef{Type: Lit(firstStep.SubjectType), ID: usersetObjectID}, true),
+			CheckPermission{Subject: SubjectParams(), Relation: firstStep.SubjectRelation, Object: ObjectRef{Type: Lit(firstStep.SubjectType), ID: usersetObjectID}, ExpectAllow: true, NoWildcard: Bool(false)},
 		),
 	)
 	conditions = append(conditions, exclusionPreds...)

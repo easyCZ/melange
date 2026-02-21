@@ -136,15 +136,17 @@ func (m *Migrator) ApplyDDL(ctx context.Context) error {
 
 // applyGeneratedSQL applies generated specialized functions and dispatcher.
 func (m *Migrator) applyGeneratedSQL(ctx context.Context, db Execer, gen GeneratedSQL) error {
-	// Apply specialized check functions first (dispatcher depends on them)
+	// Apply helper data functions first (all other functions depend on them)
+	for i, fn := range gen.HelperFunctions {
+		if _, err := db.ExecContext(ctx, fn); err != nil {
+			return fmt.Errorf("applying helper function %d: %w", i, err)
+		}
+	}
+
+	// Apply specialized check functions (dispatcher depends on them)
 	for i, fn := range gen.Functions {
 		if _, err := db.ExecContext(ctx, fn); err != nil {
 			return fmt.Errorf("applying generated function %d: %w", i, err)
-		}
-	}
-	for i, fn := range gen.NoWildcardFunctions {
-		if _, err := db.ExecContext(ctx, fn); err != nil {
-			return fmt.Errorf("applying generated no-wildcard function %d: %w", i, err)
 		}
 	}
 
@@ -152,13 +154,6 @@ func (m *Migrator) applyGeneratedSQL(ctx context.Context, db Execer, gen Generat
 	if gen.Dispatcher != "" {
 		if _, err := db.ExecContext(ctx, gen.Dispatcher); err != nil {
 			return fmt.Errorf("applying dispatcher: %w", err)
-		}
-	}
-
-	// Apply no-wildcard dispatcher
-	if gen.DispatcherNoWildcard != "" {
-		if _, err := db.ExecContext(ctx, gen.DispatcherNoWildcard); err != nil {
-			return fmt.Errorf("applying no-wildcard dispatcher: %w", err)
 		}
 	}
 
@@ -585,6 +580,14 @@ func (m *Migrator) outputDryRun(w io.Writer, melangeVersion, schemaChecksum stri
 	_, _ = fmt.Fprintf(w, "-- ============================================================\n\n")
 	_, _ = fmt.Fprintf(w, "%s\n\n", migrationsDDL)
 
+	// Helper data functions
+	_, _ = fmt.Fprintf(w, "-- ============================================================\n")
+	_, _ = fmt.Fprintf(w, "-- Helper Data Functions (%d functions)\n", len(generatedSQL.HelperFunctions))
+	_, _ = fmt.Fprintf(w, "-- ============================================================\n\n")
+	for _, fn := range generatedSQL.HelperFunctions {
+		_, _ = fmt.Fprintf(w, "%s\n\n", fn)
+	}
+
 	// Check functions
 	_, _ = fmt.Fprintf(w, "-- ============================================================\n")
 	_, _ = fmt.Fprintf(w, "-- Check Functions (%d functions)\n", len(generatedSQL.Functions))
@@ -594,22 +597,12 @@ func (m *Migrator) outputDryRun(w io.Writer, melangeVersion, schemaChecksum stri
 	}
 
 	// No-wildcard check functions
-	_, _ = fmt.Fprintf(w, "-- ============================================================\n")
-	_, _ = fmt.Fprintf(w, "-- No-Wildcard Check Functions (%d functions)\n", len(generatedSQL.NoWildcardFunctions))
-	_, _ = fmt.Fprintf(w, "-- ============================================================\n\n")
-	for _, fn := range generatedSQL.NoWildcardFunctions {
-		_, _ = fmt.Fprintf(w, "%s\n\n", fn)
-	}
-
 	// Check dispatchers
 	_, _ = fmt.Fprintf(w, "-- ============================================================\n")
 	_, _ = fmt.Fprintf(w, "-- Check Dispatchers\n")
 	_, _ = fmt.Fprintf(w, "-- ============================================================\n\n")
 	if generatedSQL.Dispatcher != "" {
 		_, _ = fmt.Fprintf(w, "%s\n\n", generatedSQL.Dispatcher)
-	}
-	if generatedSQL.DispatcherNoWildcard != "" {
-		_, _ = fmt.Fprintf(w, "%s\n\n", generatedSQL.DispatcherNoWildcard)
 	}
 	if generatedSQL.BulkDispatcher != "" {
 		_, _ = fmt.Fprintf(w, "%s\n\n", generatedSQL.BulkDispatcher)

@@ -19,7 +19,7 @@ func ListObjectsDirectQuery(input ListObjectsDirectInput) (string, error) {
 		Where(
 			Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: SubjectType},
 			In{Expr: SubjectType, Values: input.AllowedSubjectTypes},
-			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, input.AllowWildcard),
+			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, input.AllowWildcard, Bool(false)),
 		).
 		SelectCol("object_id").
 		Distinct()
@@ -93,12 +93,13 @@ func ListObjectsComplexClosureQuery(input ListObjectsComplexClosureInput) (strin
 		Where(
 			Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: SubjectType},
 			In{Expr: SubjectType, Values: input.AllowedSubjectTypes},
-			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, input.AllowWildcard),
+			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, input.AllowWildcard, Bool(false)),
 			CheckPermission{
 				Subject:     SubjectParams(),
 				Relation:    input.Relation,
 				Object:      LiteralObject(input.ObjectType, Col{Table: "t", Column: "object_id"}),
 				ExpectAllow: true,
+				NoWildcard:  Bool(false),
 			},
 		).
 		SelectCol("object_id").
@@ -140,6 +141,7 @@ func ListObjectsIntersectionClosureValidatedQuery(objectType, relation, function
 			Relation:    relation,
 			Object:      LiteralObject(objectType, Col{Table: "icr", Column: "object_id"}),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		},
 	}
 	return stmt.SQL(), nil
@@ -174,6 +176,7 @@ func ListObjectsUsersetPatternSimpleQuery(input ListObjectsUsersetPatternSimpleI
 			Relation:    input.SourceRelation,
 			Object:      LiteralObject(input.ObjectType, Col{Table: "t", Column: "object_id"}),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		})
 	}
 
@@ -190,7 +193,7 @@ func ListObjectsUsersetPatternSimpleQuery(input ListObjectsUsersetPatternSimpleI
 			In{Expr: Col{Table: "m", Column: "relation"}, Values: input.SatisfyingRelations},
 			Eq{Left: Col{Table: "m", Column: "subject_type"}, Right: SubjectType},
 			In{Expr: SubjectType, Values: input.AllowedSubjectTypes},
-			SubjectIDMatch(Col{Table: "m", Column: "subject_id"}, SubjectID, input.AllowWildcard),
+			SubjectIDMatch(Col{Table: "m", Column: "subject_id"}, SubjectID, input.AllowWildcard, Bool(false)),
 		).
 		SelectCol("object_id").
 		Distinct()
@@ -226,6 +229,7 @@ func ListObjectsUsersetPatternComplexQuery(input ListObjectsUsersetPatternComple
 				ID:   UsersetObjectID{Source: Col{Table: "t", Column: "subject_id"}},
 			},
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		},
 	}
 
@@ -235,6 +239,7 @@ func ListObjectsUsersetPatternComplexQuery(input ListObjectsUsersetPatternComple
 			Relation:    input.SourceRelation,
 			Object:      LiteralObject(input.ObjectType, Col{Table: "t", Column: "object_id"}),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		})
 	}
 
@@ -303,6 +308,7 @@ func ListObjectsCrossTypeTTUQuery(input ListObjectsCrossTypeTTUInput) (string, e
 					ID:   Col{Table: "child", Column: "subject_id"},
 				},
 				ExpectAllow: true,
+				NoWildcard:  Bool(false),
 			},
 		).
 		SelectCol("object_id").
@@ -503,6 +509,7 @@ func ListSubjectsComplexClosureQuery(input ListSubjectsComplexClosureInput) (str
 			Relation:    input.Relation,
 			Object:      LiteralObject(input.ObjectType, input.ObjectIDExpr),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		},
 	}
 
@@ -556,6 +563,7 @@ func ListSubjectsIntersectionClosureValidatedQuery(objectType, relation, functio
 			Relation:    relation,
 			Object:      LiteralObject(objectType, objectIDExpr),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		},
 	}
 	return stmt.SQL(), nil
@@ -606,6 +614,7 @@ func ListSubjectsUsersetPatternSimpleQuery(input ListSubjectsUsersetPatternSimpl
 			Relation:    input.SourceRelation,
 			Object:      LiteralObject(input.ObjectType, input.ObjectIDExpr),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		})
 	}
 
@@ -653,6 +662,7 @@ func ListSubjectsUsersetPatternComplexQuery(input ListSubjectsUsersetPatternComp
 			Relation:    input.SourceRelation,
 			Object:      LiteralObject(input.ObjectType, input.ObjectIDExpr),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		})
 	}
 
@@ -724,6 +734,7 @@ func ListSubjectsUsersetPatternRecursiveComplexQuery(input ListSubjectsUsersetPa
 				ID:   UsersetObjectID{Source: Col{Table: "t", Column: "subject_id"}},
 			},
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		},
 	}
 
@@ -736,6 +747,7 @@ func ListSubjectsUsersetPatternRecursiveComplexQuery(input ListSubjectsUsersetPa
 			Relation:    input.SourceRelation,
 			Object:      LiteralObject(input.ObjectType, input.ObjectIDExpr),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		})
 	}
 

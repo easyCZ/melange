@@ -378,12 +378,12 @@ func (d *Doctor) checkGeneratedFunctions(ctx context.Context, report *Report) er
 	}
 	d.currentFuncs = currentFuncs
 
-	// Check dispatchers exist
+	// Check dispatchers and helper functions exist
 	dispatchers := []string{
+		"melange_closure_data",
+		"melange_userset_data",
 		"check_permission",
 		"check_permission_internal",
-		"check_permission_no_wildcard",
-		"check_permission_no_wildcard_internal",
 		"list_accessible_objects",
 		"list_accessible_subjects",
 	}

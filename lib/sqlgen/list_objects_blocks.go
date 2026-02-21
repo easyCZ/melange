@@ -79,7 +79,7 @@ func buildListObjectsDirectBlock(plan ListPlan) (TypedQueryBlock, error) {
 		Where(
 			Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: SubjectType},
 			In{Expr: SubjectType, Values: plan.AllowedSubjectTypes},
-			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard),
+			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard, Bool(false)),
 		).
 		SelectCol("object_id").
 		Distinct()
@@ -163,12 +163,13 @@ func buildTypedListObjectsComplexClosureBlocks(plan ListPlan) ([]TypedQueryBlock
 			Where(
 				Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: SubjectType},
 				In{Expr: SubjectType, Values: plan.AllowedSubjectTypes},
-				SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard),
+				SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard, Bool(false)),
 				CheckPermission{
 					Subject:     SubjectParams(),
 					Relation:    rel,
 					Object:      LiteralObject(plan.ObjectType, Col{Table: "t", Column: "object_id"}),
 					ExpectAllow: true,
+					NoWildcard:  Bool(false),
 				},
 			).
 			SelectCol("object_id").
@@ -315,7 +316,7 @@ func buildIntersectionPartQuery(plan ListPlan, part IntersectionPart) SelectStmt
 			Where(
 				Eq{Left: Col{Table: alias, Column: "subject_type"}, Right: SubjectType},
 				In{Expr: SubjectType, Values: plan.AllowedSubjectTypes},
-				SubjectIDMatch(Col{Table: alias, Column: "subject_id"}, SubjectID, part.HasWildcard),
+				SubjectIDMatch(Col{Table: alias, Column: "subject_id"}, SubjectID, part.HasWildcard, Bool(false)),
 			).
 			Distinct()
 
@@ -333,6 +334,7 @@ func buildIntersectionPartQuery(plan ListPlan, part IntersectionPart) SelectStmt
 					ID:   Col{Table: alias, Column: "subject_id"},
 				},
 				ExpectAllow: true,
+				NoWildcard:  Bool(false),
 			}).
 			Distinct()
 
@@ -345,6 +347,7 @@ func buildIntersectionPartQuery(plan ListPlan, part IntersectionPart) SelectStmt
 				Relation:    part.Relation,
 				Object:      LiteralObject(plan.ObjectType, Col{Table: alias, Column: "object_id"}),
 				ExpectAllow: true,
+				NoWildcard:  Bool(false),
 			}).
 			Distinct()
 	}
@@ -355,6 +358,7 @@ func buildIntersectionPartQuery(plan ListPlan, part IntersectionPart) SelectStmt
 			Relation:    part.ExcludedRelation,
 			Object:      LiteralObject(plan.ObjectType, Col{Table: alias, Column: "object_id"}),
 			ExpectAllow: false,
+			NoWildcard:  Bool(false),
 		})
 	}
 
@@ -410,6 +414,7 @@ func buildListObjectsComplexUsersetBlock(plan ListPlan, pattern listUsersetPatte
 					ID:   UsersetObjectID{Source: Col{Table: "t", Column: "subject_id"}},
 				},
 				ExpectAllow: true,
+				NoWildcard:  Bool(false),
 			},
 		).
 		SelectCol("object_id").
@@ -444,7 +449,7 @@ func buildListObjectsSimpleUsersetBlock(plan ListPlan, pattern listUsersetPatter
 			},
 			In{Expr: Col{Table: "m", Column: "relation"}, Values: pattern.SatisfyingRelations},
 			Eq{Left: Col{Table: "m", Column: "subject_type"}, Right: SubjectType},
-			SubjectIDMatch(Col{Table: "m", Column: "subject_id"}, SubjectID, pattern.HasWildcard),
+			SubjectIDMatch(Col{Table: "m", Column: "subject_id"}, SubjectID, pattern.HasWildcard, Bool(false)),
 		).
 		SelectCol("object_id").
 		Distinct()

@@ -45,30 +45,22 @@ type CheckPlan struct {
 }
 
 // BuildCheckPlan creates a plan for generating a check function.
-// Set noWildcard to true to generate a no-wildcard variant.
-func BuildCheckPlan(a RelationAnalysis, inline InlineSQLData, noWildcard bool) CheckPlan {
-	hasWildcard := a.Features.HasWildcard && !noWildcard
-
-	// Determine function names
-	funcName := functionName(a.ObjectType, a.Relation)
-	internalFn := "check_permission_internal"
-	if noWildcard {
-		funcName = functionNameNoWildcard(a.ObjectType, a.Relation)
-		internalFn = "check_permission_no_wildcard_internal"
-	}
-
+// The generated function handles both wildcard and no-wildcard modes
+// via the p_no_wildcard parameter.
+func BuildCheckPlan(a RelationAnalysis, inline InlineSQLData) CheckPlan {
 	plan := CheckPlan{
 		Analysis:                  a,
 		Inline:                    inline,
-		FunctionName:              funcName,
-		InternalCheckFunctionName: internalFn,
+		FunctionName:              functionName(a.ObjectType, a.Relation),
+		InternalCheckFunctionName: "check_permission_internal",
 		ObjectType:                a.ObjectType,
 		Relation:                  a.Relation,
 		FeaturesString:            a.Features.String(),
 
-		// Feature configuration
-		AllowWildcard: hasWildcard,
-		NoWildcard:    noWildcard,
+		// Feature configuration — AllowWildcard controls whether the generated SQL
+		// includes dynamic wildcard matching (gated by p_no_wildcard at runtime)
+		AllowWildcard: a.Features.HasWildcard,
+		NoWildcard:    false,
 
 		// Feature flags
 		HasDirect:       a.Features.HasDirect,

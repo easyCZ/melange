@@ -107,6 +107,7 @@ func buildListSubjectsUsersetFilterDirectBlock(plan ListPlan) TypedQueryBlock {
 				Relation:     plan.Relation,
 				Object:       LiteralObject(plan.ObjectType, ObjectID),
 				ExpectAllow:  true,
+				NoWildcard:   Bool(false),
 			},
 		),
 	}
@@ -225,6 +226,7 @@ func buildTypedListSubjectsComplexClosureBlocks(plan ListPlan) []TypedQueryBlock
 					Relation:    rel,
 					Object:      LiteralObject(plan.ObjectType, ObjectID),
 					ExpectAllow: true,
+					NoWildcard:  Bool(false),
 				},
 			).
 			SelectCol("subject_id").
@@ -271,6 +273,7 @@ func buildListSubjectsIntersectionClosureBlocks(plan ListPlan, subjectTypeExpr, 
 				Relation:     plan.Relation,
 				Object:       LiteralObject(plan.ObjectType, ObjectID),
 				ExpectAllow:  true,
+				NoWildcard:   Bool(false),
 			}
 		}
 
@@ -386,6 +389,7 @@ func buildListSubjectsSimpleUsersetBlock(plan ListPlan, pattern listUsersetPatte
 			Relation:    pattern.SourceRelation,
 			Object:      LiteralObject(plan.ObjectType, ObjectID),
 			ExpectAllow: true,
+			NoWildcard:  Bool(false),
 		})
 	}
 

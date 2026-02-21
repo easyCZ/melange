@@ -214,16 +214,20 @@ func TestUsersetOperations(t *testing.T) {
 func TestSubjectIDMatch(t *testing.T) {
 	col := Col{Table: "t", Column: "subject_id"}
 
-	// With wildcard
+	// With wildcard — dynamic expression gated by p_no_wildcard
 	got := SubjectIDMatch(col, SubjectID, true).SQL()
-	if !strings.Contains(got, "t.subject_id = p_subject_id") || !strings.Contains(got, "t.subject_id = '*'") {
+	if !strings.Contains(got, "t.subject_id = p_subject_id") || !strings.Contains(got, "t.subject_id = '*'") || !strings.Contains(got, "p_no_wildcard") {
 		t.Errorf("SubjectIDMatch(allowWildcard=true) = %q, missing expected parts", got)
 	}
 
-	// Without wildcard
+	// Without wildcard (no wildcard support in model — exact match only)
 	got = SubjectIDMatch(col, SubjectID, false).SQL()
-	if !strings.Contains(got, "t.subject_id = p_subject_id") || !strings.Contains(got, "NOT") {
+	if !strings.Contains(got, "t.subject_id = p_subject_id") {
 		t.Errorf("SubjectIDMatch(allowWildcard=false) = %q, missing expected parts", got)
+	}
+	// Should NOT contain wildcard references when model doesn't support wildcards
+	if strings.Contains(got, "'*'") {
+		t.Errorf("SubjectIDMatch(allowWildcard=false) = %q, should not reference wildcards", got)
 	}
 }
 
@@ -325,6 +329,7 @@ func TestHelpers(t *testing.T) {
 }
 
 func TestCheckPermission(t *testing.T) {
+	// Default NoWildcard (nil) passes p_no_wildcard parameter through
 	check := CheckPermission{
 		Subject:     SubjectParams(),
 		Relation:    "viewer",
@@ -332,7 +337,7 @@ func TestCheckPermission(t *testing.T) {
 		ExpectAllow: true,
 	}
 	got := check.SQL()
-	expect := "check_permission_internal(p_subject_type, p_subject_id, 'viewer', 'document', t.object_id, ARRAY[]::TEXT[]) = 1"
+	expect := "check_permission_internal(p_subject_type, p_subject_id, 'viewer', 'document', t.object_id, ARRAY[]::TEXT[], p_no_wildcard) = 1"
 	if got != expect {
 		t.Errorf("CheckPermission.SQL() =\n%q\nwant:\n%q", got, expect)
 	}
@@ -342,6 +347,15 @@ func TestCheckPermission(t *testing.T) {
 	got = check.SQL()
 	if !strings.HasSuffix(got, "= 0") {
 		t.Errorf("CheckPermission with ExpectAllow=false should end with '= 0', got %q", got)
+	}
+
+	// Test with explicit NoWildcard = TRUE (list function context)
+	check.ExpectAllow = true
+	check.NoWildcard = Bool(true)
+	got = check.SQL()
+	expect = "check_permission_internal(p_subject_type, p_subject_id, 'viewer', 'document', t.object_id, ARRAY[]::TEXT[], TRUE) = 1"
+	if got != expect {
+		t.Errorf("CheckPermission.SQL() with NoWildcard=TRUE =\n%q\nwant:\n%q", got, expect)
 	}
 }
 

@@ -375,16 +375,13 @@ func buildImpliedFunctionCalls(plan CheckPlan) []ImpliedFunctionCheck {
 	calls := make([]ImpliedFunctionCheck, 0, len(plan.Analysis.ComplexClosureRelations))
 
 	for _, rel := range plan.Analysis.ComplexClosureRelations {
-		funcName := functionName(plan.ObjectType, rel)
-		if plan.NoWildcard {
-			funcName = functionNameNoWildcard(plan.ObjectType, rel)
-		}
+		fn := functionName(plan.ObjectType, rel)
 
 		calls = append(calls, ImpliedFunctionCheck{
 			Relation:     rel,
-			FunctionName: funcName,
+			FunctionName: fn,
 			Check: CheckPermissionCall{
-				FunctionName: funcName,
+				FunctionName: fn,
 				Subject:      SubjectParams(),
 				Relation:     rel,
 				Object:       LiteralObject(plan.ObjectType, ObjectID),

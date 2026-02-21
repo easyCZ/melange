@@ -36,24 +36,54 @@ func buildTupleLookupRelations(a RelationAnalysis) []string {
 	return relations
 }
 
+// generateHelperFunctions generates shared data helper functions that contain
+// closure and userset model data. Other generated functions reference these
+// helpers instead of embedding the data inline, reducing total SQL size.
+func generateHelperFunctions(inline InlineSQLData) []string {
+	var helpers []string
+
+	// melange_closure_data(): returns closure rows as a table
+	closureTable := InlineClosureTable(inline.ClosureRows, "t")
+	closureFn := SqlFunction{
+		Name:    ClosureDataFuncName,
+		Returns: "TABLE(object_type TEXT, relation TEXT, satisfying_relation TEXT)",
+		Body:    Raw("SELECT t.object_type, t.relation, t.satisfying_relation FROM " + closureTable.TableSQL()),
+		Header:  []string{"Shared closure data for all generated functions"},
+		Volatility: "IMMUTABLE",
+	}
+	helpers = append(helpers, closureFn.SQL()+"\n")
+
+	// melange_userset_data(): returns userset rows as a table
+	usersetTable := InlineUsersetTable(inline.UsersetRows, "t")
+	usersetFn := SqlFunction{
+		Name:    UsersetDataFuncName,
+		Returns: "TABLE(object_type TEXT, relation TEXT, subject_type TEXT, subject_relation TEXT)",
+		Body:    Raw("SELECT t.object_type, t.relation, t.subject_type, t.subject_relation FROM " + usersetTable.TableSQL()),
+		Header:  []string{"Shared userset data for all generated functions"},
+		Volatility: "IMMUTABLE",
+	}
+	helpers = append(helpers, usersetFn.SQL()+"\n")
+
+	return helpers
+}
+
 // GeneratedSQL contains all SQL generated for a schema.
 // This is applied atomically during migration to ensure consistent state.
 type GeneratedSQL struct {
+	// HelperFunctions contains CREATE OR REPLACE FUNCTION statements for
+	// shared data helper functions (melange_closure_data, melange_userset_data).
+	// These must be applied before any other functions that reference them.
+	HelperFunctions []string
+
 	// Functions contains CREATE OR REPLACE FUNCTION statements
 	// for each specialized check function (check_{type}_{relation}).
+	// Each function accepts p_no_wildcard BOOLEAN to toggle wildcard matching.
 	Functions []string
-
-	// NoWildcardFunctions contains CREATE OR REPLACE FUNCTION statements
-	// for no-wildcard variants (check_{type}_{relation}_no_wildcard).
-	// These skip wildcard matching for performance-critical paths.
-	NoWildcardFunctions []string
 
 	// Dispatcher contains the check_permission dispatcher function
 	// that routes requests to specialized functions based on object type and relation.
+	// Accepts p_no_wildcard BOOLEAN to propagate wildcard behavior.
 	Dispatcher string
-
-	// DispatcherNoWildcard contains the check_permission_no_wildcard dispatcher.
-	DispatcherNoWildcard string
 
 	// BulkDispatcher contains the check_permission_bulk function that evaluates
 	// multiple permission checks in a single SQL call using UNION ALL branches.
@@ -76,32 +106,26 @@ type GeneratedSQL struct {
 func GenerateSQL(analyses []RelationAnalysis, inline InlineSQLData) (GeneratedSQL, error) {
 	var result GeneratedSQL
 
+	// Generate shared data helper functions first (other functions reference these)
+	result.HelperFunctions = generateHelperFunctions(inline)
+
 	// Generate specialized function for each relation
 	for _, a := range analyses {
 		if !a.Capabilities.CheckAllowed {
 			continue
 		}
-		fn, err := generateCheckFunction(a, inline, false)
+		fn, err := generateCheckFunction(a, inline)
 		if err != nil {
 			return GeneratedSQL{}, fmt.Errorf("generating check function: %w", err)
 		}
 		result.Functions = append(result.Functions, fn)
-		noWildcardFn, err := generateCheckFunction(a, inline, true)
-		if err != nil {
-			return GeneratedSQL{}, fmt.Errorf("generating no-wildcard check function: %w", err)
-		}
-		result.NoWildcardFunctions = append(result.NoWildcardFunctions, noWildcardFn)
 	}
 
 	// Generate dispatchers
 	var err error
-	result.Dispatcher, err = generateDispatcher(analyses, false)
+	result.Dispatcher, err = generateDispatcher(analyses)
 	if err != nil {
 		return GeneratedSQL{}, fmt.Errorf("generating dispatcher: %w", err)
-	}
-	result.DispatcherNoWildcard, err = generateDispatcher(analyses, true)
-	if err != nil {
-		return GeneratedSQL{}, fmt.Errorf("generating no-wildcard dispatcher: %w", err)
 	}
 
 	// Generate bulk dispatcher
@@ -113,10 +137,6 @@ func GenerateSQL(analyses []RelationAnalysis, inline InlineSQLData) (GeneratedSQ
 // functionName returns the name for a specialized check function.
 func functionName(objectType, relation string) string {
 	return fmt.Sprintf("check_%s_%s", sanitizeIdentifier(objectType), sanitizeIdentifier(relation))
-}
-
-func functionNameNoWildcard(objectType, relation string) string {
-	return fmt.Sprintf("check_%s_%s_no_wildcard", sanitizeIdentifier(objectType), sanitizeIdentifier(relation))
 }
 
 // sanitizeIdentifier converts a type/relation name to a valid SQL identifier.
@@ -171,18 +191,20 @@ type DispatcherCase struct {
 // that need to be dropped when the schema changes.
 //
 // The returned list includes:
+//   - Helper data functions: melange_closure_data, melange_userset_data
 //   - Specialized check functions: check_{type}_{relation}
-//   - No-wildcard check variants: check_{type}_{relation}_no_wildcard
 //   - Specialized list functions: list_{type}_{relation}_objects, list_{type}_{relation}_subjects
 //   - Dispatcher functions (always included): check_permission, list_accessible_objects, etc.
 func CollectFunctionNames(analyses []RelationAnalysis) []string {
 	var names []string
 
+	// Helper data functions are always generated
+	names = append(names, ClosureDataFuncName, UsersetDataFuncName)
+
 	for _, a := range analyses {
 		if a.Capabilities.CheckAllowed {
 			names = append(names,
 				functionName(a.ObjectType, a.Relation),
-				functionNameNoWildcard(a.ObjectType, a.Relation),
 			)
 		}
 		if a.Capabilities.ListAllowed {
@@ -197,8 +219,6 @@ func CollectFunctionNames(analyses []RelationAnalysis) []string {
 	names = append(names,
 		"check_permission",
 		"check_permission_internal",
-		"check_permission_no_wildcard",
-		"check_permission_no_wildcard_internal",
 		"check_permission_bulk",
 		"list_accessible_objects",
 		"list_accessible_subjects",

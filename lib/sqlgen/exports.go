@@ -120,6 +120,8 @@ var (
 	TypedUsersetValuesTable         = sqldsl.TypedUsersetValuesTable
 	ClosureTable                    = sqldsl.ClosureTable
 	UsersetTable                    = sqldsl.UsersetTable
+	InlineClosureTable              = sqldsl.InlineClosureTable
+	InlineUsersetTable              = sqldsl.InlineUsersetTable
 	Ident                           = sqldsl.Ident
 	RenderBlocks                    = sqldsl.RenderBlocks
 	RenderUnionBlocks               = sqldsl.RenderUnionBlocks
@@ -175,6 +177,9 @@ const (
 	ListStrategyDepthExceeded  = analysis.ListStrategyDepthExceeded
 	ListStrategySelfRefUserset = analysis.ListStrategySelfRefUserset
 	ListStrategyComposed       = analysis.ListStrategyComposed
+
+	ClosureDataFuncName = sqldsl.ClosureDataFuncName
+	UsersetDataFuncName = sqldsl.UsersetDataFuncName
 )
 
 var (

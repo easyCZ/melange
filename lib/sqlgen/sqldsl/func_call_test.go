@@ -88,7 +88,7 @@ func TestSpecializedCheckCall(t *testing.T) {
 	fc := SpecializedCheckCall("check_doc_owner", SubjectType, SubjectID, ObjectID, Visited)
 	got := fc.SQL()
 
-	if got != "check_doc_owner(p_subject_type, p_subject_id, p_object_id, p_visited) = 1" {
+	if got != "check_doc_owner(p_subject_type, p_subject_id, p_object_id, p_visited, p_no_wildcard) = 1" {
 		t.Errorf("SpecializedCheckCall().SQL() = %q", got)
 	}
 }
@@ -112,6 +112,7 @@ func TestInternalCheckCall(t *testing.T) {
 		"link.subject_type",
 		"link.subject_id",
 		"p_visited",
+		"p_no_wildcard",
 		") = 1",
 	}
 

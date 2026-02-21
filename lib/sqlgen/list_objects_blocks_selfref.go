@@ -51,7 +51,7 @@ func buildSelfRefUsersetDirectBlock(plan ListPlan) TypedQueryBlock {
 		Where(
 			Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: SubjectType},
 			In{Expr: SubjectType, Values: plan.AllowedSubjectTypes},
-			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard),
+			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard, Bool(false)),
 		).
 		SelectCol("object_id").
 		Distinct()
@@ -79,12 +79,13 @@ func buildSelfRefUsersetComplexClosureBlocks(plan ListPlan) []TypedQueryBlock {
 			Where(
 				Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: SubjectType},
 				In{Expr: SubjectType, Values: plan.AllowedSubjectTypes},
-				SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard),
+				SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard, Bool(false)),
 				CheckPermission{
 					Subject:     SubjectParams(),
 					Relation:    rel,
 					Object:      LiteralObject(plan.ObjectType, Col{Table: "t", Column: "object_id"}),
 					ExpectAllow: true,
+					NoWildcard:  Bool(false),
 				},
 			).
 			SelectCol("object_id").
@@ -156,15 +157,16 @@ func buildSelfRefUsersetComplexPatternBlock(plan ListPlan, pattern listUsersetPa
 			Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: Lit(pattern.SubjectType)},
 			HasUserset{Source: Col{Table: "t", Column: "subject_id"}},
 			Eq{Left: UsersetRelation{Source: Col{Table: "t", Column: "subject_id"}}, Right: Lit(pattern.SubjectRelation)},
-			CheckPermissionInternalExpr(
-				SubjectParams(),
-				pattern.SubjectRelation,
-				ObjectRef{
+			CheckPermission{
+				Subject:     SubjectParams(),
+				Relation:    pattern.SubjectRelation,
+				Object: ObjectRef{
 					Type: Lit(pattern.SubjectType),
 					ID:   UsersetObjectID{Source: Col{Table: "t", Column: "subject_id"}},
 				},
-				true,
-			),
+				ExpectAllow: true,
+				NoWildcard:  Bool(false),
+			},
 		).
 		SelectCol("object_id").
 		Distinct()
@@ -218,6 +220,7 @@ func buildSelfRefUsersetSimplePatternBlock(plan ListPlan, pattern listUsersetPat
 				Relation:    pattern.SourceRelation,
 				Object:      LiteralObject(plan.ObjectType, Col{Table: "t", Column: "object_id"}),
 				ExpectAllow: true,
+				NoWildcard:  Bool(false),
 			},
 		)
 	}

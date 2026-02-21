@@ -64,7 +64,7 @@ func buildRecursiveDirectBlock(plan ListPlan) TypedQueryBlock {
 		Where(
 			Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: SubjectType},
 			In{Expr: SubjectType, Values: plan.AllowedSubjectTypes},
-			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard),
+			SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard, Bool(false)),
 		).
 		SelectCol("object_id").
 		Distinct()
@@ -93,12 +93,13 @@ func buildRecursiveComplexClosureBlocks(plan ListPlan) []TypedQueryBlock {
 			Where(
 				Eq{Left: Col{Table: "t", Column: "subject_type"}, Right: SubjectType},
 				In{Expr: SubjectType, Values: plan.AllowedSubjectTypes},
-				SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard),
+				SubjectIDMatch(Col{Table: "t", Column: "subject_id"}, SubjectID, plan.AllowWildcard, Bool(false)),
 				CheckPermission{
 					Subject:     SubjectParams(),
 					Relation:    rel,
 					Object:      LiteralObject(plan.ObjectType, Col{Table: "t", Column: "object_id"}),
 					ExpectAllow: true,
+					NoWildcard:  Bool(false),
 				},
 			).
 			SelectCol("object_id").
@@ -183,6 +184,7 @@ func buildRecursiveComplexUsersetBlock(plan ListPlan, pattern listUsersetPattern
 					ID:   UsersetObjectID{Source: Col{Table: "t", Column: "subject_id"}},
 				},
 				ExpectAllow: true,
+				NoWildcard:  Bool(false),
 			},
 		).
 		SelectCol("object_id").
@@ -219,7 +221,7 @@ func buildRecursiveSimpleUsersetBlock(plan ListPlan, pattern listUsersetPatternI
 			},
 			In{Expr: Col{Table: "m", Column: "relation"}, Values: pattern.SatisfyingRelations},
 			Eq{Left: Col{Table: "m", Column: "subject_type"}, Right: SubjectType},
-			SubjectIDMatch(Col{Table: "m", Column: "subject_id"}, SubjectID, pattern.HasWildcard),
+			SubjectIDMatch(Col{Table: "m", Column: "subject_id"}, SubjectID, pattern.HasWildcard, Bool(false)),
 		).
 		SelectCol("object_id").
 		Distinct()
@@ -265,6 +267,7 @@ func buildCrossTypeTTUBlocks(plan ListPlan, parentRelations []ListParentRelation
 						ID:   Col{Table: "child", Column: "subject_id"},
 					},
 					ExpectAllow: true,
+					NoWildcard:  Bool(false),
 				},
 			).
 			SelectCol("object_id").
